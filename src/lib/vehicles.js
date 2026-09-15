@@ -14,6 +14,16 @@ export async function listVehicles({ limit = 100 } = {}) {
   return data;
 }
 
+export async function getVehicle(id) {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function createVehicle(payload) {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user?.id ?? null;
@@ -26,8 +36,6 @@ export async function createVehicle(payload) {
   return data;
 }
 
-// Uses a security-definer RPC (see supabase/schema.sql) so a visitor can
-// bump the like counter without getting a blanket UPDATE policy on the table.
 export async function likeVehicle(vehicleId) {
   const { data, error } = await supabase.rpc("increment_vehicle_likes", {
     vehicle_id: vehicleId,

@@ -1,15 +1,21 @@
 import React, { useState } from "react";
-import { Heart, MessageCircle, Gauge, Calendar, Car, Bike } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Heart, MessageCircle, Gauge, Calendar, Car, Bike, Share2 } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { likeVehicle } from "@/lib/vehicles";
+import { useToast } from "@/components/ui/use-toast";
 
 const WHATSAPP_NUMBER = "5541991369093";
 
 export default function VehicleCard({ vehicle }) {
+  const { toast } = useToast();
   const [likes, setLikes] = useState(vehicle.likes || 0);
   const [liked, setLiked] = useState(false);
 
-  const handleLike = async () => {
+  const detailUrl = `/veiculo/${vehicle.id}`;
+
+  const handleLike = async (e) => {
+    e.preventDefault();
     if (liked) return;
     setLiked(true);
     setLikes((l) => l + 1);
@@ -20,15 +26,38 @@ export default function VehicleCard({ vehicle }) {
     }
   };
 
-  const handleWhatsApp = () => {
-    const msg = `Olá! Tenho interesse no veículo: ${vehicle.brand} ${vehicle.model} ${vehicle.year} - R$ ${Number(vehicle.price).toLocaleString("pt-BR")}, anunciado na Five Garage.`;
+  const handleWhatsApp = (e) => {
+    e.preventDefault();
+    const msg = `Olá! Tenho interesse no veículo: ${vehicle.brand} ${vehicle.model} ${vehicle.year} - R$ ${Number(vehicle.price).toLocaleString("pt-BR")}, anunciado na Five Garage.\n${window.location.origin}${detailUrl}`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  const handleShare = async (e) => {
+    e.preventDefault();
+    const url = `${window.location.origin}${detailUrl}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Five Garage", url });
+      } catch (err) {
+        // usuário cancelou — sem problema
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Link copiado!" });
+    } catch (err) {
+      toast({ title: "Não foi possível copiar o link", variant: "destructive" });
+    }
   };
 
   const isMoto = vehicle.vehicle_type === "moto";
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 hover:border-red-600/60 transition-all duration-300 hover:shadow-2xl hover:shadow-red-900/20">
+    <Link
+      to={detailUrl}
+      className="group relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 hover:border-red-600/60 transition-all duration-300 hover:shadow-2xl hover:shadow-red-900/20 block"
+    >
       <div className="relative aspect-[4/3] overflow-hidden bg-zinc-950">
         {vehicle.image_url ? (
           <Image
@@ -52,13 +81,22 @@ export default function VehicleCard({ vehicle }) {
             </span>
           )}
         </div>
-        <button
-          onClick={handleLike}
-          className={`absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full backdrop-blur-md border transition-all ${liked ? "bg-red-600/90 border-red-400 text-white" : "bg-black/60 border-zinc-600 text-zinc-200 hover:bg-black/80"}`}
-        >
-          <Heart size={14} className={liked ? "fill-current" : ""} />
-          <span className="text-xs font-semibold">{likes}</span>
-        </button>
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            aria-label="Compartilhar anúncio"
+            className="flex items-center px-2.5 py-1.5 rounded-full backdrop-blur-md border bg-black/60 border-zinc-600 text-zinc-200 hover:bg-black/80 transition-all"
+          >
+            <Share2 size={14} />
+          </button>
+          <button
+            onClick={handleLike}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full backdrop-blur-md border transition-all ${liked ? "bg-red-600/90 border-red-400 text-white" : "bg-black/60 border-zinc-600 text-zinc-200 hover:bg-black/80"}`}
+          >
+            <Heart size={14} className={liked ? "fill-current" : ""} />
+            <span className="text-xs font-semibold">{likes}</span>
+          </button>
+        </div>
       </div>
 
       <div className="p-4 space-y-3">
@@ -95,6 +133,6 @@ export default function VehicleCard({ vehicle }) {
           </button>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
