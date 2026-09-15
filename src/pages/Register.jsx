@@ -1,16 +1,10 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  registerWithEmail,
-  verifySignupOtp,
-  resendSignupOtp,
-  loginWithGoogle,
-} from "@/lib/auth";
+import { registerWithEmail, resendSignupEmail, loginWithGoogle } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
@@ -22,8 +16,8 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +29,7 @@ export default function Register() {
     setLoading(true);
     try {
       await registerWithEmail(email, password);
-      setShowOtp(true);
+      setSent(true);
     } catch (err) {
       setError(err.message || "Falha ao criar a conta");
     } finally {
@@ -43,30 +37,18 @@ export default function Register() {
     }
   };
 
-  const handleVerify = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      // verifySignupOtp already leaves the user logged in on success.
-      await verifySignupOtp(email, otpCode);
-      window.location.href = safeReturnTo();
-    } catch (err) {
-      setError(err.message || "Código de verificação inválido");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleResend = async () => {
-    setError("");
+    setResending(true);
     try {
-      await resendSignupOtp(email);
+      await resendSignupEmail(email);
       toast({
-        title: "Código enviado",
-        description: "Confira seu e-mail para o novo código.",
+        title: "E-mail reenviado",
+        description: "Confira sua caixa de entrada (e o spam).",
       });
     } catch (err) {
-      setError(err.message || "Falha ao reenviar o código");
+      toast({ title: "Não foi possível reenviar", variant: "destructive" });
+    } finally {
+      setResending(false);
     }
   };
 
@@ -74,55 +56,37 @@ export default function Register() {
     loginWithGoogle(safeReturnTo());
   };
 
-  if (showOtp) {
+  if (sent) {
     return (
       <AuthLayout
         icon={Mail}
-        title="Verifique seu e-mail"
-        subtitle={`Enviamos um código para ${email}`}
+        title="Confirme seu e-mail"
+        subtitle={`Enviamos um link de confirmação para ${email}`}
       >
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-            {error}
-          </div>
-        )}
-        <div className="flex justify-center mb-6">
-          <InputOTP
-            maxLength={6}
-            value={otpCode}
-            onChange={setOtpCode}
-            autoFocus
-            autoComplete="one-time-code"
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
+        <p className="text-sm text-muted-foreground text-center mb-6">
+          Abra o e-mail e clique no link de confirmação — você já cai de
+          volta no site, logado. Se não encontrar, olhe também na caixa de
+          spam.
+        </p>
         <Button
           className="w-full h-12 font-medium"
-          onClick={handleVerify}
-          disabled={loading || otpCode.length < 6}
+          variant="outline"
+          onClick={handleResend}
+          disabled={resending}
         >
-          {loading ? (
+          {resending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verificando...
+              Reenviando...
             </>
           ) : (
-            "Verificar"
+            "Reenviar e-mail de confirmação"
           )}
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
-          Não recebeu o código?{" "}
-          <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Reenviar
-          </button>
+          <Link to="/login" className="text-primary font-medium hover:underline">
+            Já confirmou? Entrar
+          </Link>
         </p>
       </AuthLayout>
     );

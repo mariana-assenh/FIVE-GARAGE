@@ -19,33 +19,29 @@ export async function isAdmin() {
   return !!data?.is_admin;
 }
 
-// Thin wrappers around Supabase Auth, kept small and named after what each
-// page actually does, so the page components stay easy to read.
-
 export async function loginWithEmail(email, password) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
 }
 
+// Confirmação por link (o padrão do Supabase, sem precisar mexer em nenhum
+// modelo de e-mail): a pessoa cadastra e-mail/senha, recebe um e-mail com um
+// link de confirmação, e ao clicar já cai de volta no site autenticada.
 export async function registerWithEmail(email, password) {
-  const { error } = await supabase.auth.signUp({ email, password });
-  if (error) throw error;
-}
-
-// Requires the "Confirm signup" email template in the Supabase dashboard to
-// include {{ .Token }} (the 6-digit code) — see README.md.
-export async function verifySignupOtp(email, token) {
-  const { data, error } = await supabase.auth.verifyOtp({
+  const { error } = await supabase.auth.signUp({
     email,
-    token,
-    type: "signup",
+    password,
+    options: { emailRedirectTo: `${window.location.origin}/` },
   });
   if (error) throw error;
-  return data;
 }
 
-export async function resendSignupOtp(email) {
-  const { error } = await supabase.auth.resend({ type: "signup", email });
+export async function resendSignupEmail(email) {
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: `${window.location.origin}/` },
+  });
   if (error) throw error;
 }
 
