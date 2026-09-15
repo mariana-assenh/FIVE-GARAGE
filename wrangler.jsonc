@@ -2,6 +2,10 @@
   "name": "five-garage",
   "compatibility_date": "2026-09-15",
   "main": "worker.js",
+  "vars": {
+    "VITE_SUPABASE_URL": "https://bvfxgxktplrrfryumnay.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "sb_publishable_hfjh2-3d6RaOIYIHuduDxA_Rzp3jOjf"
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
