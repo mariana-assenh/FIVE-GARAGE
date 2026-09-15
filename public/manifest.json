@@ -1,0 +1,16 @@
+{
+  "name": "Five Garage",
+  "short_name": "Five Garage",
+  "description": "Compra e venda de carros e motos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
