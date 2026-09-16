@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Car, Bike, Phone, MapPin, Mail, Instagram, Facebook, ChevronRight, LogIn } from "lucide-react";
+import { Car, Bike, Phone, MapPin, Mail, Instagram, Facebook, ChevronRight, LogIn, Plus } from "lucide-react";
 import { listVehicles } from "@/lib/vehicles";
+import { listTeamMembers } from "@/lib/team";
+import { listApprovedReviews } from "@/lib/reviews";
 import { isAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import Logo from "@/components/Logo";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleForm from "@/components/VehicleForm";
 import UserBadge from "@/components/UserBadge";
+import TeamMemberCard from "@/components/TeamMemberCard";
+import TeamMemberForm from "@/components/TeamMemberForm";
+import ReviewCard from "@/components/ReviewCard";
+import ReviewForm from "@/components/ReviewForm";
+import PendingReviews from "@/components/PendingReviews";
 
 const WHATSAPP_NUMBER = "5541991369093";
 
@@ -17,6 +24,9 @@ export default function Home() {
   const [filter, setFilter] = useState("todos");
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamFormOpen, setTeamFormOpen] = useState(null); // null | "new" | membro sendo editado
+  const [reviews, setReviews] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -30,9 +40,29 @@ export default function Home() {
     }
   }, []);
 
+  const loadTeam = useCallback(async () => {
+    try {
+      const data = await listTeamMembers();
+      setTeamMembers(data);
+    } catch (e) {
+      setTeamMembers([]);
+    }
+  }, []);
+
+  const loadReviews = useCallback(async () => {
+    try {
+      const data = await listApprovedReviews();
+      setReviews(data);
+    } catch (e) {
+      setReviews([]);
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadTeam();
+    loadReviews();
+  }, [load, loadTeam, loadReviews]);
 
   // Só quem é administrador vê o botão de excluir anúncio nos cards (a
   // policy de DELETE no Supabase também exige isso — supabase/schema.sql).
@@ -81,6 +111,8 @@ export default function Home() {
             <a href="#vitrine" className="hover:text-white transition-colors">Anúncios</a>
             <a href="#anunciar" className="hover:text-white transition-colors">Anunciar</a>
             <a href="#sobre" className="hover:text-white transition-colors">Sobre</a>
+            <a href="#equipe" className="hover:text-white transition-colors">Equipe</a>
+            <a href="#avaliacoes" className="hover:text-white transition-colors">Avaliações</a>
             <a href="#contato" className="hover:text-white transition-colors">Contato</a>
           </nav>
           <div className="flex items-center gap-3">
@@ -203,7 +235,7 @@ export default function Home() {
           <span className="text-red-500 text-sm font-semibold uppercase tracking-widest">Anuncie</span>
           <h2 className="text-3xl md:text-4xl font-bold mt-1 mb-4">Quer vender seu veículo?</h2>
           <p className="text-zinc-400 mb-8 max-w-xl mx-auto">
-            Publique seu anúncio gratuitamente. Compradores interessados entram em contato direto pelo WhatsApp.
+            Publique seu anúncio na Five Garage. Compradores interessados entram em contato direto pelo WhatsApp.
           </p>
           <VehicleForm onCreated={load} />
         </div>
@@ -227,6 +259,72 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* EQUIPE */}
+      <section id="equipe" className="bg-zinc-950 border-y border-zinc-800 py-16 md:py-20 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 text-center md:text-left">
+            <div>
+              <span className="text-red-500 text-sm font-semibold uppercase tracking-widest">Quem faz a Five Garage</span>
+              <h2 className="text-3xl md:text-4xl font-bold mt-1">Nossa equipe</h2>
+            </div>
+            {isAdminUser && (
+              <button
+                onClick={() => setTeamFormOpen("new")}
+                className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors self-center md:self-auto"
+              >
+                <Plus size={16} /> Adicionar integrante
+              </button>
+            )}
+          </div>
+
+          {teamMembers.length === 0 ? (
+            <p className="text-center text-zinc-500">Em breve, conheça quem cuida do seu atendimento na Five Garage.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {teamMembers.map((m) => (
+                <TeamMemberCard
+                  key={m.id}
+                  member={m}
+                  isAdmin={isAdminUser}
+                  onEdit={setTeamFormOpen}
+                  onDeleted={() => setTeamMembers((list) => list.filter((x) => x.id !== m.id))}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* AVALIAÇÕES */}
+      <section id="avaliacoes" className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-20">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <span className="text-red-500 text-sm font-semibold uppercase tracking-widest">Avaliações</span>
+          <h2 className="text-3xl md:text-4xl font-bold mt-1 mb-3">O que dizem nossos clientes</h2>
+          <p className="text-zinc-400">Já fez negócio com a gente? Deixe sua avaliação e ajude outras pessoas a decidir.</p>
+        </div>
+
+        {isAdminUser && <PendingReviews />}
+
+        <div className="grid md:grid-cols-2 gap-8 items-start">
+          <ReviewForm />
+          <div className="space-y-4">
+            {reviews.length === 0 ? (
+              <p className="text-zinc-500 text-center md:text-left">Ainda não há avaliações publicadas. Seja o primeiro a avaliar!</p>
+            ) : (
+              reviews.map((r) => <ReviewCard key={r.id} review={r} />)
+            )}
+          </div>
+        </div>
+      </section>
+
+      {teamFormOpen && (
+        <TeamMemberForm
+          editing={teamFormOpen === "new" ? null : teamFormOpen}
+          onClose={() => setTeamFormOpen(null)}
+          onSaved={loadTeam}
+        />
+      )}
 
       {/* CONTATO / FOOTER */}
       <footer id="contato" className="bg-zinc-950 border-t border-zinc-800 text-white">

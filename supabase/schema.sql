@@ -155,6 +155,118 @@ create policy "Admins can delete vehicle photos"
   to authenticated
   using (bucket_id = 'vehicle-photos' and public.is_admin());
 
+-- ── Equipe ──────────────────────────────────────────────────────────────
+-- Mostrada na sessão "Nossa equipe" do site. Qualquer visitante pode ver;
+-- só administradores podem adicionar, editar ou remover integrantes (a
+-- edição é feita direto pelo site, sem precisar do SQL Editor).
+
+create table if not exists public.team_members (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  name text not null,
+  role text,
+  bio text,
+  photo_url text,
+  sort_order integer not null default 0
+);
+
+alter table public.team_members enable row level security;
+
+drop policy if exists "Team members are viewable by everyone" on public.team_members;
+create policy "Team members are viewable by everyone"
+  on public.team_members for select
+  using (true);
+
+drop policy if exists "Admins can insert team members" on public.team_members;
+create policy "Admins can insert team members"
+  on public.team_members for insert
+  to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "Admins can update team members" on public.team_members;
+create policy "Admins can update team members"
+  on public.team_members for update
+  to authenticated
+  using (public.is_admin());
+
+drop policy if exists "Admins can delete team members" on public.team_members;
+create policy "Admins can delete team members"
+  on public.team_members for delete
+  to authenticated
+  using (public.is_admin());
+
+-- Fotos da equipe (mesmo padrão do bucket vehicle-photos acima).
+insert into storage.buckets (id, name, public)
+values ('team-photos', 'team-photos', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Team photos are publicly readable" on storage.objects;
+create policy "Team photos are publicly readable"
+  on storage.objects for select
+  using (bucket_id = 'team-photos');
+
+drop policy if exists "Admins can upload team photos" on storage.objects;
+create policy "Admins can upload team photos"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'team-photos' and public.is_admin());
+
+drop policy if exists "Admins can update team photos" on storage.objects;
+create policy "Admins can update team photos"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'team-photos' and public.is_admin());
+
+drop policy if exists "Admins can delete team photos" on storage.objects;
+create policy "Admins can delete team photos"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'team-photos' and public.is_admin());
+
+-- ── Avaliações de clientes ──────────────────────────────────────────────
+-- Qualquer visitante (logado ou não) pode enviar uma avaliação (nota de
+-- estrelas + texto curto), mas ela só aparece no site depois que um
+-- administrador aprovar — enquanto isso fica "pendente" e só o admin
+-- consegue vê-la.
+
+create table if not exists public.reviews (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  author_name text,
+  rating integer not null check (rating between 1 and 5),
+  comment text not null,
+  approved boolean not null default false
+);
+
+alter table public.reviews enable row level security;
+
+drop policy if exists "Approved reviews are viewable by everyone" on public.reviews;
+create policy "Approved reviews are viewable by everyone"
+  on public.reviews for select
+  using (approved = true or public.is_admin());
+
+-- Envio liberado pra qualquer um, mas sempre como pendente — ninguém
+-- consegue se auto-aprovar mandando approved = true na requisição, porque
+-- essa condição abaixo bloquearia a inserção.
+drop policy if exists "Anyone can submit a review" on public.reviews;
+create policy "Anyone can submit a review"
+  on public.reviews for insert
+  to anon, authenticated
+  with check (approved = false);
+
+drop policy if exists "Admins can update reviews" on public.reviews;
+create policy "Admins can update reviews"
+  on public.reviews for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Admins can delete reviews" on public.reviews;
+create policy "Admins can delete reviews"
+  on public.reviews for delete
+  to authenticated
+  using (public.is_admin());
+
 -- ── Tornar alguém administrador ────────────────────────────────────────
 -- 1. Essa pessoa precisa criar uma conta pelo site (tela "Criar conta").
 -- 2. Depois, rode o comando abaixo (troque o e-mail) para dar acesso de
