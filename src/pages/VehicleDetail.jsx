@@ -98,14 +98,18 @@ export default function VehicleDetail() {
 
   return (
     <div
-      className="min-h-screen text-white"
-      style={{
-        backgroundColor: "#000000",
-        backgroundImage: "radial-gradient(circle at 15% 10%, rgba(239,68,68,0.06), transparent 45%)",
-        backgroundAttachment: "fixed",
-      }}
+      className={`min-h-screen ${isAdminUser ? "text-zinc-900" : "text-white"}`}
+      style={
+        isAdminUser
+          ? { backgroundColor: "#ffffff", backgroundAttachment: "fixed" }
+          : {
+              backgroundColor: "#000000",
+              backgroundImage: "radial-gradient(circle at 15% 10%, rgba(239,68,68,0.06), transparent 45%)",
+              backgroundAttachment: "fixed",
+            }
+      }
     >
-      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-zinc-800">
+      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-zinc-800 text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-3">
             <Logo className="h-12 w-12" />
@@ -166,7 +170,7 @@ export default function VehicleDetail() {
             </div>
 
             <div className="flex flex-col">
-              <h1 className="text-3xl font-extrabold text-white leading-tight">{vehicle.brand} {vehicle.model}</h1>
+              <h1 className="text-3xl font-extrabold leading-tight">{vehicle.brand} {vehicle.model}</h1>
               <p className="text-zinc-400 mt-1">{vehicle.title}</p>
 
               <div className="flex items-center gap-5 text-sm text-zinc-400 mt-4">
@@ -178,7 +182,7 @@ export default function VehicleDetail() {
 
               <div className="mt-6">
                 <span className="block text-xs uppercase tracking-widest text-zinc-500">Preço</span>
-                <span className="text-4xl font-extrabold text-white">R$ {Number(vehicle.price).toLocaleString("pt-BR")}</span>
+                <span className="text-4xl font-extrabold">R$ {Number(vehicle.price).toLocaleString("pt-BR")}</span>
               </div>
 
               {vehicle.description && (

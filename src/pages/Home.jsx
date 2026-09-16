@@ -49,15 +49,19 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen text-white"
-      style={{
-        backgroundColor: "#000000",
-        backgroundImage: "radial-gradient(circle at 15% 10%, rgba(239,68,68,0.06), transparent 45%)",
-        backgroundAttachment: "fixed",
-      }}
+      className={`min-h-screen ${isAdminUser ? "text-zinc-900" : "text-white"}`}
+      style={
+        isAdminUser
+          ? { backgroundColor: "#ffffff", backgroundAttachment: "fixed" }
+          : {
+              backgroundColor: "#000000",
+              backgroundImage: "radial-gradient(circle at 15% 10%, rgba(239,68,68,0.06), transparent 45%)",
+              backgroundAttachment: "fixed",
+            }
+      }
     >
       {/* NAVBAR */}
-      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-zinc-800">
+      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-zinc-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
             <Logo className="h-12 w-12" />
@@ -84,7 +88,7 @@ export default function Home() {
       </header>
 
       {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black">
+      <section className="relative overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black text-white">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, #ef4444 0, transparent 40%), radial-gradient(circle at 80% 70%, #3f3f46 0, transparent 50%)" }} />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
           <div className="space-y-6">
@@ -176,7 +180,7 @@ export default function Home() {
       </section>
 
       {/* ANUNCIAR */}
-      <section id="anunciar" className="bg-zinc-950 border-y border-zinc-800 py-16 md:py-20">
+      <section id="anunciar" className="bg-zinc-950 border-y border-zinc-800 py-16 md:py-20 text-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <span className="text-red-500 text-sm font-semibold uppercase tracking-widest">Anuncie</span>
           <h2 className="text-3xl md:text-4xl font-bold mt-1 mb-4">Quer vender seu veículo?</h2>
@@ -195,7 +199,7 @@ export default function Home() {
             { t: "Negócio direto", d: "Fale direto com a gente pelo WhatsApp, sem intermediários." },
             { t: "Carros e motos", d: "Trabalhamos com todos os tipos de veículos, novos e usados." },
           ].map((f, i) => (
-            <div key={i} className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-red-600/40 transition-colors">
+            <div key={i} className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-red-600/40 transition-colors text-white">
               <div className="w-10 h-10 rounded-lg bg-red-600/20 flex items-center justify-center mb-4">
                 <span className="text-red-500 font-bold">{i + 1}</span>
               </div>
@@ -207,7 +211,7 @@ export default function Home() {
       </section>
 
       {/* CONTATO / FOOTER */}
-      <footer id="contato" className="bg-zinc-950 border-t border-zinc-800">
+      <footer id="contato" className="bg-zinc-950 border-t border-zinc-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
