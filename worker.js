@@ -34,13 +34,23 @@ function buildMeta(vehicle, pageUrl, siteOrigin) {
   return { title, description, image, pageUrl };
 }
 
+// Cabeçalho de depuração (x-debug-worker) adicionado em toda resposta desta
+// rota, só pra facilitar diagnosticar problemas olhando a aba Network do
+// navegador — pode ser removido depois que tudo estiver funcionando.
+function withDebug(response, reason) {
+  const headers = new Headers(response.headers);
+  headers.set("x-debug-worker", reason);
+  return new Response(response.body, { status: response.status, headers });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const match = url.pathname.match(VEHICLE_PATH);
 
     if (!match) {
-      return env.ASSETS.fetch(request);
+      const res = await env.ASSETS.fetch(request);
+      return withDebug(res, "no-path-match");
     }
 
     const vehicleId = match[1];
@@ -48,10 +58,12 @@ export default {
     const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      return env.ASSETS.fetch(request);
+      const res = await env.ASSETS.fetch(request);
+      return withDebug(res, "no-env-vars");
     }
 
     let vehicle = null;
+    let fetchDebug = "ok";
     try {
       const apiRes = await fetch(
         `${supabaseUrl}/rest/v1/vehicles?id=eq.${vehicleId}&select=*`,
@@ -60,16 +72,19 @@ export default {
       if (apiRes.ok) {
         const rows = await apiRes.json();
         vehicle = Array.isArray(rows) ? rows[0] : null;
+        if (!vehicle) fetchDebug = "no-vehicle-row";
+      } else {
+        fetchDebug = `http-${apiRes.status}:${(await apiRes.text()).slice(0, 200)}`;
       }
     } catch (e) {
-      vehicle = null;
+      fetchDebug = `throw:${String(e && e.message ? e.message : e).slice(0, 200)}`;
     }
 
     const indexRequest = new Request(new URL("/", request.url), request);
     const assetResponse = await env.ASSETS.fetch(indexRequest);
 
     if (!vehicle) {
-      return assetResponse;
+      return withDebug(assetResponse, fetchDebug);
     }
 
     const { title, description, image, pageUrl } = buildMeta(
@@ -105,7 +120,7 @@ export default {
 
     return new Response(html, {
       status: assetResponse.status,
-      headers: { "content-type": "text/html; charset=UTF-8" },
+      headers: { "content-type": "text/html; charset=UTF-8", "x-debug-worker": "replaced" },
     });
   },
 };
