@@ -10,6 +10,6 @@
   },
   "vars": {
     "VITE_SUPABASE_URL": "https://bvfxgxktplrrfryumnay.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "sb_publishable_hfjh2-3d6RaOIYIHuduDxA_Rzp3jOjf"
+    "VITE_SUPABASE_ANON_KEY": "sb_publishable_hfjh2-3d6RaOIYIHuduDxA_Rzp3j0jf"
   }
 }
