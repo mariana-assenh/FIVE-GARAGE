@@ -36,6 +36,27 @@ export async function createVehicle(payload) {
   return data;
 }
 
+// Apaga o anúncio (a policy de DELETE no Supabase só deixa administradores
+// fazerem isso — ver supabase/schema.sql). Aceita o id ou o objeto do
+// veículo; se vier o objeto, também tenta apagar a foto associada no
+// Storage — isso é best-effort: se falhar (por exemplo, a policy de DELETE
+// do bucket ainda não foi criada), o anúncio já foi removido mesmo assim.
+export async function deleteVehicle(vehicle) {
+  const id = typeof vehicle === "string" ? vehicle : vehicle.id;
+  const { error } = await supabase.from(TABLE).delete().eq("id", id);
+  if (error) throw error;
+
+  const imageUrl = vehicle && typeof vehicle === "object" ? vehicle.image_url : null;
+  if (imageUrl) {
+    const marker = `/${PHOTOS_BUCKET}/`;
+    const idx = imageUrl.indexOf(marker);
+    if (idx !== -1) {
+      const path = imageUrl.slice(idx + marker.length);
+      supabase.storage.from(PHOTOS_BUCKET).remove([path]).catch(() => {});
+    }
+  }
+}
+
 export async function likeVehicle(vehicleId) {
   const { data, error } = await supabase.rpc("increment_vehicle_likes", {
     vehicle_id: vehicleId,

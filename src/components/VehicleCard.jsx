@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, MessageCircle, Gauge, Calendar, Car, Bike, Share2 } from "lucide-react";
+import { Heart, MessageCircle, Gauge, Calendar, Car, Bike, Share2, Trash2, Loader2 } from "lucide-react";
 import { Image } from "@/components/ui/image";
-import { likeVehicle } from "@/lib/vehicles";
+import { likeVehicle, deleteVehicle } from "@/lib/vehicles";
 import { useToast } from "@/components/ui/use-toast";
 
 const WHATSAPP_NUMBER = "5541991369093";
 
-export default function VehicleCard({ vehicle }) {
+export default function VehicleCard({ vehicle, isAdmin = false, onDeleted }) {
   const { toast } = useToast();
   const [likes, setLikes] = useState(vehicle.likes || 0);
   const [liked, setLiked] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const detailUrl = `/veiculo/${vehicle.id}`;
 
@@ -51,6 +52,25 @@ export default function VehicleCard({ vehicle }) {
     }
   };
 
+  const handleDelete = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (deleting) return;
+    const ok = window.confirm(
+      `Excluir o anúncio "${vehicle.brand} ${vehicle.model}"? Essa ação não pode ser desfeita.`
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteVehicle(vehicle);
+      toast({ title: "Anúncio excluído" });
+      onDeleted?.(vehicle.id);
+    } catch (err) {
+      toast({ title: "Não foi possível excluir o anúncio", variant: "destructive" });
+      setDeleting(false);
+    }
+  };
+
   const isMoto = vehicle.vehicle_type === "moto";
 
   return (
@@ -82,6 +102,16 @@ export default function VehicleCard({ vehicle }) {
           )}
         </div>
         <div className="absolute top-3 right-3 flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-label="Excluir anúncio"
+              className="flex items-center px-2.5 py-1.5 rounded-full backdrop-blur-md border bg-black/60 border-red-900/60 text-red-400 hover:bg-red-950/80 hover:text-red-300 transition-all disabled:opacity-60"
+            >
+              {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            </button>
+          )}
           <button
             onClick={handleShare}
             aria-label="Compartilhar anúncio"

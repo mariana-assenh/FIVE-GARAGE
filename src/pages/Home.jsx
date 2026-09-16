@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Car, Bike, Phone, MapPin, Mail, Instagram, Facebook, ChevronRight } from "lucide-react";
 import { listVehicles } from "@/lib/vehicles";
+import { isAdmin } from "@/lib/auth";
+import { supabase } from "@/lib/supabaseClient";
 import Logo from "@/components/Logo";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleForm from "@/components/VehicleForm";
@@ -12,6 +14,7 @@ export default function Home() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("todos");
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -28,6 +31,19 @@ export default function Home() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Só quem é administrador vê o botão de excluir anúncio nos cards (a
+  // policy de DELETE no Supabase também exige isso — supabase/schema.sql).
+  useEffect(() => {
+    let active = true;
+    const check = () => isAdmin().then((ok) => active && setIsAdminUser(ok));
+    check();
+    const { data: subscription } = supabase.auth.onAuthStateChange(() => check());
+    return () => {
+      active = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
 
   const filtered = filter === "todos" ? vehicles : vehicles.filter((v) => v.vehicle_type === filter);
 
@@ -153,7 +169,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((v) => (
-              <VehicleCard key={v.id} vehicle={v} />
+              <VehicleCard key={v.id} vehicle={v} isAdmin={isAdminUser} onDeleted={load} />
             ))}
           </div>
         )}

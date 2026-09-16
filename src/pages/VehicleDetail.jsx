@@ -1,8 +1,10 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Bike, Calendar, Car, Copy, Gauge, MessageCircle, Share2 } from "lucide-react";
-import { getVehicle } from "@/lib/vehicles";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Bike, Calendar, Car, Copy, Gauge, MessageCircle, Share2, Trash2, Loader2 } from "lucide-react";
+import { getVehicle, deleteVehicle } from "@/lib/vehicles";
+import { isAdmin } from "@/lib/auth";
+import { supabase } from "@/lib/supabaseClient";
 import { Image } from "@/components/ui/image";
 import { useToast } from "@/components/ui/use-toast";
 import Logo from "@/components/Logo";
@@ -11,9 +13,23 @@ const WHATSAPP_NUMBER = "5541991369093";
 
 export default function VehicleDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [vehicle, setVehicle] = useState(null);
   const [status, setStatus] = useState("loading");
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const check = () => isAdmin().then((ok) => active && setIsAdminUser(ok));
+    check();
+    const { data: subscription } = supabase.auth.onAuthStateChange(() => check());
+    return () => {
+      active = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -61,6 +77,23 @@ export default function VehicleDetail() {
     if (!vehicle) return;
     const msg = `Olá! Tenho interesse no veículo: ${vehicle.brand} ${vehicle.model} ${vehicle.year} - R$ ${Number(vehicle.price).toLocaleString("pt-BR")}, anunciado na Five Garage.\n${shareUrl}`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  const handleDelete = async () => {
+    if (!vehicle || deleting) return;
+    const ok = window.confirm(
+      `Excluir o anúncio "${vehicle.brand} ${vehicle.model}"? Essa ação não pode ser desfeita.`
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteVehicle(vehicle);
+      toast({ title: "Anúncio excluído" });
+      navigate("/");
+    } catch (err) {
+      toast({ title: "Não foi possível excluir o anúncio", variant: "destructive" });
+      setDeleting(false);
+    }
   };
 
   return (
@@ -171,6 +204,16 @@ export default function VehicleDetail() {
                 >
                   <Copy size={16} /> Copiar link
                 </button>
+                {isAdminUser && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex items-center gap-2 bg-red-950/60 hover:bg-red-950 border border-red-900/60 text-red-400 hover:text-red-300 px-5 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+                  >
+                    {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    {deleting ? "Excluindo..." : "Excluir anúncio"}
+                  </button>
+                )}
               </div>
             </div>
           </div>

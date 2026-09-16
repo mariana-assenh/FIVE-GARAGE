@@ -149,6 +149,12 @@ create policy "Admins can upload vehicle photos"
   to authenticated
   with check (bucket_id = 'vehicle-photos' and public.is_admin());
 
+drop policy if exists "Admins can delete vehicle photos" on storage.objects;
+create policy "Admins can delete vehicle photos"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'vehicle-photos' and public.is_admin());
+
 -- ── Tornar alguém administrador ────────────────────────────────────────
 -- 1. Essa pessoa precisa criar uma conta pelo site (tela "Criar conta").
 -- 2. Depois, rode o comando abaixo (troque o e-mail) para dar acesso de
