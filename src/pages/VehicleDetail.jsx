@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Image } from "@/components/ui/image";
 import { useToast } from "@/components/ui/use-toast";
 import Logo from "@/components/Logo";
+import UserBadge from "@/components/UserBadge";
 
 const WHATSAPP_NUMBER = "5541991369093";
 
@@ -118,9 +119,12 @@ export default function VehicleDetail() {
               <span className="block text-[10px] text-red-500 tracking-[0.2em] uppercase">Carros & Motos</span>
             </div>
           </Link>
-          <Link to="/" className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white transition-colors">
-            <ArrowLeft size={16} /> Voltar aos anúncios
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white transition-colors">
+              <ArrowLeft size={16} /> Voltar aos anúncios
+            </Link>
+            <UserBadge />
+          </div>
         </div>
       </header>
 
