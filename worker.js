@@ -40,6 +40,13 @@ function buildMeta(vehicle, pageUrl, siteOrigin) {
 function withDebug(response, reason) {
   const headers = new Headers(response.headers);
   headers.set("x-debug-worker", reason);
+  // Essa rota decide o conteúdo (e às vezes dá erro) dependendo do que
+  // acontece a cada requisição (Supabase no ar, veículo existe, chave
+  // válida etc.) — nunca pode ficar guardada em cache de borda do
+  // Cloudflare, senão um erro temporário (ou os dados de um veículo)
+  // ficam "congelados" e continuam sendo servidos depois de já terem sido
+  // corrigidos/atualizados.
+  headers.set("cache-control", "no-store");
   return new Response(response.body, { status: response.status, headers });
 }
 
@@ -120,7 +127,11 @@ export default {
 
     return new Response(html, {
       status: assetResponse.status,
-      headers: { "content-type": "text/html; charset=UTF-8", "x-debug-worker": "replaced" },
+      headers: {
+        "content-type": "text/html; charset=UTF-8",
+        "x-debug-worker": "replaced",
+        "cache-control": "no-store",
+      },
     });
   },
 };
