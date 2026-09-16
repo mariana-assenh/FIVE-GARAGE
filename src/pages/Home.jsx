@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Car, Bike, Phone, MapPin, Mail, Instagram, Facebook, ChevronRight } from "lucide-react";
+import { Car, Bike, Phone, MapPin, Mail, Instagram, Facebook, ChevronRight, LogIn } from "lucide-react";
 import { listVehicles } from "@/lib/vehicles";
 import { isAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
@@ -16,6 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("todos");
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,7 +38,12 @@ export default function Home() {
   // policy de DELETE no Supabase também exige isso — supabase/schema.sql).
   useEffect(() => {
     let active = true;
-    const check = () => isAdmin().then((ok) => active && setIsAdminUser(ok));
+    const check = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!active) return;
+      setIsLoggedIn(!!data.user);
+      setIsAdminUser(data.user ? await isAdmin() : false);
+    };
     check();
     const { data: subscription } = supabase.auth.onAuthStateChange(() => check());
     return () => {
@@ -86,6 +92,14 @@ export default function Home() {
             >
               <Phone size={16} /> <span className="hidden sm:inline">Fale conosco</span>
             </a>
+            {!isLoggedIn && (
+              <Link
+                to="/login"
+                className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+              >
+                <LogIn size={16} /> <span className="hidden sm:inline">Entrar</span>
+              </Link>
+            )}
             <UserBadge />
           </div>
         </div>
