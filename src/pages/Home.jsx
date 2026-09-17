@@ -414,8 +414,12 @@ export default function Home() {
                   <Phone size={15} className="text-red-500" /> (41) 99136-9093
                 </a>
               </li>
-              <li className="flex items-center gap-2"><Mail size={15} className="text-red-500" /> contato@fivegarage.com.br</li>
-              <li className="flex items-center gap-2"><MapPin size={15} className="text-red-500" /> Curitiba, PR</li>
+              <li>
+                <a href="mailto:contato@fivegarage.com.br" className="flex items-center gap-2 hover:text-white">
+                  <Mail size={15} className="text-red-500" /> contato@fivegarage.com.br
+                </a>
+              </li>
+              <li className="flex items-center gap-2"><MapPin size={15} className="text-red-500" /> Guaratuba, PR</li>
             </ul>
           </div>
           <div>
