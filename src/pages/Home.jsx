@@ -176,6 +176,9 @@ export default function Home() {
               <a href="#anunciar" className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-xl font-bold transition-colors border border-zinc-700">
                 Anunciar meu veículo
               </a>
+              <a href="#parceiros" className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-xl font-bold transition-colors border border-zinc-700">
+                Seja um parceiro
+              </a>
             </div>
             <div className="flex gap-8 pt-4">
               <div>
