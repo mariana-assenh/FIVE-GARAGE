@@ -48,3 +48,12 @@ export async function rejectReview(id) {
   const { error } = await supabase.from(TABLE).delete().eq("id", id);
   if (error) throw error;
 }
+
+// Exclui uma avaliação já publicada (aprovada) — usado pelo botão de
+// excluir nos cards visíveis pra todo mundo. A policy de DELETE no
+// Supabase também exige is_admin() (ver supabase/schema.sql), então esta
+// função só funciona de fato quando quem chama está logado como admin.
+export async function deleteReview(id) {
+  const { error } = await supabase.from(TABLE).delete().eq("id", id);
+  if (error) throw error;
+}

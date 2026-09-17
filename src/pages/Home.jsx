@@ -4,6 +4,7 @@ import { Car, Bike, Phone, MapPin, Mail, Instagram, Facebook, ChevronRight, LogI
 import { listVehicles } from "@/lib/vehicles";
 import { listTeamMembers } from "@/lib/team";
 import { listApprovedReviews } from "@/lib/reviews";
+import { listPartnerListings } from "@/lib/partnerListings";
 import { isAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import Logo from "@/components/Logo";
@@ -15,6 +16,8 @@ import TeamMemberForm from "@/components/TeamMemberForm";
 import ReviewCard from "@/components/ReviewCard";
 import ReviewForm from "@/components/ReviewForm";
 import PendingReviews from "@/components/PendingReviews";
+import PartnerListingCard from "@/components/PartnerListingCard";
+import PartnerListingFormModal from "@/components/PartnerListingFormModal";
 
 const WHATSAPP_NUMBER = "5541991369093";
 
@@ -27,6 +30,8 @@ export default function Home() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [teamFormOpen, setTeamFormOpen] = useState(null); // null | "new" | membro sendo editado
   const [reviews, setReviews] = useState([]);
+  const [partnerListings, setPartnerListings] = useState([]);
+  const [partnerFormOpen, setPartnerFormOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,11 +63,21 @@ export default function Home() {
     }
   }, []);
 
+  const loadPartners = useCallback(async () => {
+    try {
+      const data = await listPartnerListings();
+      setPartnerListings(data);
+    } catch (e) {
+      setPartnerListings([]);
+    }
+  }, []);
+
   useEffect(() => {
     load();
     loadTeam();
     loadReviews();
-  }, [load, loadTeam, loadReviews]);
+    loadPartners();
+  }, [load, loadTeam, loadReviews, loadPartners]);
 
   // Só quem é administrador vê o botão de excluir anúncio nos cards (a
   // policy de DELETE no Supabase também exige isso — supabase/schema.sql).
@@ -111,6 +126,7 @@ export default function Home() {
             <a href="#vitrine" className="hover:text-white transition-colors">Anúncios</a>
             <a href="#anunciar" className="hover:text-white transition-colors">Anunciar</a>
             <a href="#sobre" className="hover:text-white transition-colors">Sobre</a>
+            <a href="#parceiros" className="hover:text-white transition-colors">Parceiros</a>
             <a href="#equipe" className="hover:text-white transition-colors">Equipe</a>
             <a href="#avaliacoes" className="hover:text-white transition-colors">Avaliações</a>
             <a href="#contato" className="hover:text-white transition-colors">Contato</a>
@@ -260,6 +276,40 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ANÚNCIOS PARCEIROS */}
+      <section id="parceiros" className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-20">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 text-center md:text-left">
+          <div>
+            <span className="text-red-500 text-sm font-semibold uppercase tracking-widest">Quem indicamos</span>
+            <h2 className="text-3xl md:text-4xl font-bold mt-1">Anúncios parceiros</h2>
+          </div>
+          {isAdminUser && (
+            <button
+              onClick={() => setPartnerFormOpen(true)}
+              className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors self-center md:self-auto"
+            >
+              <Plus size={16} /> Adicionar parceiro
+            </button>
+          )}
+        </div>
+
+        {partnerListings.length === 0 ? (
+          <p className="text-center text-zinc-500">Em breve, conheça nossos parceiros.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {partnerListings.map((p) => (
+              <PartnerListingCard
+                key={p.id}
+                listing={p}
+                isAdmin={isAdminUser}
+                onDeleted={() => setPartnerListings((list) => list.filter((x) => x.id !== p.id))}
+                onUpdated={loadPartners}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* EQUIPE */}
       <section id="equipe" className="bg-zinc-950 border-y border-zinc-800 py-16 md:py-20 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -312,7 +362,14 @@ export default function Home() {
             {reviews.length === 0 ? (
               <p className="text-zinc-500 text-center md:text-left">Ainda não há avaliações publicadas. Seja o primeiro a avaliar!</p>
             ) : (
-              reviews.map((r) => <ReviewCard key={r.id} review={r} />)
+              reviews.map((r) => (
+                <ReviewCard
+                  key={r.id}
+                  review={r}
+                  isAdmin={isAdminUser}
+                  onDeleted={(id) => setReviews((list) => list.filter((x) => x.id !== id))}
+                />
+              ))
             )}
           </div>
         </div>
@@ -325,6 +382,13 @@ export default function Home() {
           onSaved={loadTeam}
         />
       )}
+
+      <PartnerListingFormModal
+        listing={null}
+        open={partnerFormOpen}
+        onOpenChange={setPartnerFormOpen}
+        onSaved={loadPartners}
+      />
 
       {/* CONTATO / FOOTER */}
       <footer id="contato" className="bg-zinc-950 border-t border-zinc-800 text-white">

@@ -510,6 +510,252 @@ create policy "Admins can delete reviews"
   to authenticated
   using (public.is_admin());
 
+-- ── Anúncios parceiros ──────────────────────────────────────────────────
+-- Mostrado na sessão "Anúncios parceiros" da Home, antes de "Nossa
+-- equipe". Editável só por administradores, com o mesmo padrão de fotos
+-- (até 20 fotos, até 200MB no total, mesmos formatos) usado nos anúncios
+-- de veículos — inclusive a mesma ideia de capa sincronizada
+-- automaticamente e limites reforçados de verdade no banco, não só no
+-- frontend.
+
+create table if not exists public.partner_listings (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  company_name text not null,
+  phone text not null,
+  address text,
+  description text,
+  observacoes text,
+  image_url text
+);
+
+alter table public.partner_listings enable row level security;
+
+grant select on public.partner_listings to anon;
+grant select, insert, update, delete on public.partner_listings to authenticated;
+
+drop policy if exists "Partner listings are viewable by everyone" on public.partner_listings;
+create policy "Partner listings are viewable by everyone"
+  on public.partner_listings for select
+  using (true);
+
+drop policy if exists "Admins can insert partner listings" on public.partner_listings;
+create policy "Admins can insert partner listings"
+  on public.partner_listings for insert
+  to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "Admins can update partner listings" on public.partner_listings;
+create policy "Admins can update partner listings"
+  on public.partner_listings for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Admins can delete partner listings" on public.partner_listings;
+create policy "Admins can delete partner listings"
+  on public.partner_listings for delete
+  to authenticated
+  using (public.is_admin());
+
+-- Mesmos limites de texto usados nos anúncios de veículos (título/
+-- descrição/observações) — "not valid" pra não quebrar se já existir
+-- algum dado maior que o limite novo.
+alter table public.partner_listings drop constraint if exists partner_listings_company_name_length_check;
+alter table public.partner_listings
+  add constraint partner_listings_company_name_length_check
+  check (char_length(company_name) <= 120) not valid;
+
+alter table public.partner_listings drop constraint if exists partner_listings_description_length_check;
+alter table public.partner_listings
+  add constraint partner_listings_description_length_check
+  check (description is null or char_length(description) <= 5000) not valid;
+
+alter table public.partner_listings drop constraint if exists partner_listings_observacoes_length_check;
+alter table public.partner_listings
+  add constraint partner_listings_observacoes_length_check
+  check (observacoes is null or char_length(observacoes) <= 2000) not valid;
+
+-- Fotos dos anúncios parceiros (mesmo padrão do bucket vehicle-photos).
+insert into storage.buckets (id, name, public)
+values ('partner-photos', 'partner-photos', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Partner photos are publicly readable" on storage.objects;
+create policy "Partner photos are publicly readable"
+  on storage.objects for select
+  using (bucket_id = 'partner-photos');
+
+drop policy if exists "Admins can upload partner photos" on storage.objects;
+create policy "Admins can upload partner photos"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'partner-photos' and public.is_admin());
+
+drop policy if exists "Admins can update partner photos" on storage.objects;
+create policy "Admins can update partner photos"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'partner-photos' and public.is_admin())
+  with check (bucket_id = 'partner-photos' and public.is_admin());
+
+drop policy if exists "Admins can delete partner photos" on storage.objects;
+create policy "Admins can delete partner photos"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'partner-photos' and public.is_admin());
+
+update storage.buckets
+set file_size_limit = 10485760, -- 10 MB por arquivo, igual vehicle-photos
+    allowed_mime_types = array['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+where id = 'partner-photos';
+
+create table if not exists public.partner_listing_photos (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  partner_listing_id uuid not null references public.partner_listings(id) on delete cascade,
+  storage_path text not null,
+  public_url text not null,
+  file_name text,
+  file_size bigint not null default 0,
+  mime_type text,
+  ordem integer not null default 0,
+  is_cover boolean not null default false
+);
+
+alter table public.partner_listing_photos enable row level security;
+
+grant select on public.partner_listing_photos to anon;
+grant select, insert, update, delete on public.partner_listing_photos to authenticated;
+
+drop policy if exists "Partner listing photo rows are viewable by everyone" on public.partner_listing_photos;
+create policy "Partner listing photo rows are viewable by everyone"
+  on public.partner_listing_photos for select
+  using (true);
+
+drop policy if exists "Admins can insert partner listing photo rows" on public.partner_listing_photos;
+create policy "Admins can insert partner listing photo rows"
+  on public.partner_listing_photos for insert
+  to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "Admins can update partner listing photo rows" on public.partner_listing_photos;
+create policy "Admins can update partner listing photo rows"
+  on public.partner_listing_photos for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Admins can delete partner listing photo rows" on public.partner_listing_photos;
+create policy "Admins can delete partner listing photo rows"
+  on public.partner_listing_photos for delete
+  to authenticated
+  using (public.is_admin());
+
+create index if not exists idx_partner_listing_photos_listing_id on public.partner_listing_photos(partner_listing_id);
+
+-- Trava real no banco pro limite de 20 fotos / 200MB por anúncio parceiro
+-- (mesma lógica de check_vehicle_photo_limits, adaptada pra esta tabela).
+create or replace function public.check_partner_photo_limits()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  photo_count integer;
+  total_size bigint;
+begin
+  select count(*), coalesce(sum(file_size), 0)
+  into photo_count, total_size
+  from public.partner_listing_photos
+  where partner_listing_id = new.partner_listing_id
+    and id <> coalesce(new.id, '00000000-0000-0000-0000-000000000000'::uuid);
+
+  photo_count := photo_count + 1;
+  total_size := total_size + coalesce(new.file_size, 0);
+
+  if photo_count > 20 then
+    raise exception 'Limite de 20 fotos por anúncio parceiro excedido (seriam % fotos)', photo_count;
+  end if;
+
+  if total_size > 209715200 then -- 200 MB em bytes
+    raise exception 'Limite de 200MB por anúncio parceiro excedido (total seria % bytes)', total_size;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_check_partner_photo_limits on public.partner_listing_photos;
+create trigger trg_check_partner_photo_limits
+  before insert or update on public.partner_listing_photos
+  for each row execute function public.check_partner_photo_limits();
+
+-- Garante só uma foto de capa por anúncio parceiro.
+create or replace function public.enforce_single_partner_cover_photo()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.is_cover then
+    update public.partner_listing_photos
+    set is_cover = false
+    where partner_listing_id = new.partner_listing_id
+      and id <> new.id
+      and is_cover = true;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_single_partner_cover_photo on public.partner_listing_photos;
+create trigger trg_enforce_single_partner_cover_photo
+  before insert or update on public.partner_listing_photos
+  for each row execute function public.enforce_single_partner_cover_photo();
+
+-- Mantém partner_listings.image_url sempre igual à foto de capa atual.
+create or replace function public.sync_partner_cover_photo()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_listing_id uuid;
+  cover_url text;
+begin
+  target_listing_id := coalesce(new.partner_listing_id, old.partner_listing_id);
+
+  select public_url into cover_url
+  from public.partner_listing_photos
+  where partner_listing_id = target_listing_id and is_cover = true
+  order by ordem asc
+  limit 1;
+
+  if cover_url is null then
+    select public_url into cover_url
+    from public.partner_listing_photos
+    where partner_listing_id = target_listing_id
+    order by ordem asc, created_at asc
+    limit 1;
+  end if;
+
+  update public.partner_listings
+  set image_url = cover_url
+  where id = target_listing_id;
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists trg_sync_partner_cover_photo on public.partner_listing_photos;
+create trigger trg_sync_partner_cover_photo
+  after insert or update or delete on public.partner_listing_photos
+  for each row execute function public.sync_partner_cover_photo();
+
 -- ── Tornar alguém administrador ────────────────────────────────────────
 -- 1. Essa pessoa precisa criar uma conta pelo site (tela "Criar conta").
 -- 2. Depois, rode o comando abaixo (troque o e-mail) para dar acesso de
