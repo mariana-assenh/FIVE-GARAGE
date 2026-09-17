@@ -1,14 +1,16 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bike, Calendar, Car, Copy, Gauge, MessageCircle, Share2, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Bike, Calendar, Car, Copy, Gauge, MessageCircle, Pencil, Share2, Trash2, Loader2 } from "lucide-react";
 import { getVehicle, deleteVehicle } from "@/lib/vehicles";
+import { listVehiclePhotos } from "@/lib/vehiclePhotos";
 import { isAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { Image } from "@/components/ui/image";
 import { useToast } from "@/components/ui/use-toast";
 import Logo from "@/components/Logo";
 import UserBadge from "@/components/UserBadge";
+import VehicleFormModal from "@/components/VehicleFormModal";
 
 const WHATSAPP_NUMBER = "5541991369093";
 
@@ -20,6 +22,9 @@ export default function VehicleDetail() {
   const [status, setStatus] = useState("loading");
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [activePhoto, setActivePhoto] = useState(0);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -36,11 +41,18 @@ export default function VehicleDetail() {
     let active = true;
     setStatus("loading");
     getVehicle(id)
-      .then((data) => {
+      .then(async (data) => {
         if (!active) return;
         if (data) {
           setVehicle(data);
+          setActivePhoto(0);
           setStatus("found");
+          try {
+            const rows = await listVehiclePhotos(data.id);
+            if (active) setPhotos(rows);
+          } catch {
+            if (active) setPhotos([]);
+          }
         } else {
           setStatus("not-found");
         }
@@ -50,6 +62,19 @@ export default function VehicleDetail() {
       active = false;
     };
   }, [id]);
+
+  // Chamado depois de salvar uma edição no modal: recarrega o anúncio e as
+  // fotos pra refletir na hora o que acabou de ser alterado.
+  const handleSaved = async () => {
+    try {
+      const [data, rows] = await Promise.all([getVehicle(id), listVehiclePhotos(id)]);
+      if (data) setVehicle(data);
+      setPhotos(rows);
+      setActivePhoto(0);
+    } catch {
+      // se falhar, a próxima navegação/recarga da página já traz os dados certos
+    }
+  };
 
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
@@ -153,24 +178,50 @@ export default function VehicleDetail() {
 
         {status === "found" && vehicle && (
           <div className="grid md:grid-cols-2 gap-8 md:gap-10">
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800">
-              {vehicle.image_url ? (
-                <Image src={vehicle.image_url} alt={`${vehicle.brand} ${vehicle.model}`} fittingType="cover" className="w-full h-full" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-zinc-700">
-                  {vehicle.vehicle_type === "moto" ? <Bike size={80} /> : <Car size={80} />}
+            <div>
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800">
+                {photos.length > 0 ? (
+                  <Image
+                    src={photos[activePhoto]?.public_url || photos[0].public_url}
+                    alt={`${vehicle.brand} ${vehicle.model}`}
+                    fittingType="cover"
+                    className="w-full h-full"
+                  />
+                ) : vehicle.image_url ? (
+                  <Image src={vehicle.image_url} alt={`${vehicle.brand} ${vehicle.model}`} fittingType="cover" className="w-full h-full" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-700">
+                    {vehicle.vehicle_type === "moto" ? <Bike size={80} /> : <Car size={80} />}
+                  </div>
+                )}
+                <div className="absolute top-3 left-3 flex items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${vehicle.vehicle_type === "moto" ? "bg-zinc-200 text-black" : "bg-red-600 text-white"}`}>
+                    {vehicle.vehicle_type === "moto" ? "Moto" : "Carro"}
+                  </span>
+                  {vehicle.status === "vendido" && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-black/70 text-zinc-300 border border-zinc-600">
+                      Vendido
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {photos.length > 1 && (
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {photos.map((p, idx) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setActivePhoto(idx)}
+                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 shrink-0 ${
+                        idx === activePhoto ? "border-red-600" : "border-zinc-800 hover:border-zinc-600"
+                      }`}
+                      aria-label={`Ver foto ${idx + 1}`}
+                    >
+                      <Image src={p.public_url} alt="" fittingType="cover" className="w-full h-full" />
+                    </button>
+                  ))}
                 </div>
               )}
-              <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${vehicle.vehicle_type === "moto" ? "bg-zinc-200 text-black" : "bg-red-600 text-white"}`}>
-                  {vehicle.vehicle_type === "moto" ? "Moto" : "Carro"}
-                </span>
-                {vehicle.status === "vendido" && (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-black/70 text-zinc-300 border border-zinc-600">
-                    Vendido
-                  </span>
-                )}
-              </div>
             </div>
 
             <div className="flex flex-col">
@@ -191,6 +242,15 @@ export default function VehicleDetail() {
 
               {vehicle.description && (
                 <p className="text-zinc-300 mt-6 leading-relaxed whitespace-pre-line">{vehicle.description}</p>
+              )}
+
+              {isAdminUser && vehicle.observacoes && (
+                <div className="mt-6 border-t border-zinc-800 pt-4">
+                  <span className="block text-xs uppercase tracking-widest text-zinc-500 mb-1">
+                    Observações (visível só para admin)
+                  </span>
+                  <p className="text-zinc-400 leading-relaxed whitespace-pre-line">{vehicle.observacoes}</p>
+                </div>
               )}
 
               <div className="flex flex-wrap gap-3 mt-8">
@@ -214,6 +274,14 @@ export default function VehicleDetail() {
                 </button>
                 {isAdminUser && (
                   <button
+                    onClick={() => setEditOpen(true)}
+                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-5 py-3 rounded-xl text-sm font-semibold transition-colors"
+                  >
+                    <Pencil size={16} /> Editar anúncio
+                  </button>
+                )}
+                {isAdminUser && (
+                  <button
                     onClick={handleDelete}
                     disabled={deleting}
                     className="flex items-center gap-2 bg-red-950/60 hover:bg-red-950 border border-red-900/60 text-red-400 hover:text-red-300 px-5 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
@@ -227,6 +295,10 @@ export default function VehicleDetail() {
           </div>
         )}
       </main>
+
+      {isAdminUser && vehicle && (
+        <VehicleFormModal vehicle={vehicle} open={editOpen} onOpenChange={setEditOpen} onSaved={handleSaved} />
+      )}
     </div>
   );
 }

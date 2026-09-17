@@ -223,7 +223,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((v) => (
-              <VehicleCard key={v.id} vehicle={v} isAdmin={isAdminUser} onDeleted={load} />
+              <VehicleCard key={v.id} vehicle={v} isAdmin={isAdminUser} onDeleted={load} onUpdated={load} />
             ))}
           </div>
         )}

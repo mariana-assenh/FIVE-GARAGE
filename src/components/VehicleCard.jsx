@@ -1,17 +1,19 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, MessageCircle, Gauge, Calendar, Car, Bike, Share2, Trash2, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Gauge, Calendar, Car, Bike, Share2, Trash2, Loader2, Pencil } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { likeVehicle, deleteVehicle } from "@/lib/vehicles";
 import { useToast } from "@/components/ui/use-toast";
+import VehicleFormModal from "@/components/VehicleFormModal";
 
 const WHATSAPP_NUMBER = "5541991369093";
 
-export default function VehicleCard({ vehicle, isAdmin = false, onDeleted }) {
+export default function VehicleCard({ vehicle, isAdmin = false, onDeleted, onUpdated }) {
   const { toast } = useToast();
   const [likes, setLikes] = useState(vehicle.likes || 0);
   const [liked, setLiked] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const detailUrl = `/veiculo/${vehicle.id}`;
 
@@ -73,7 +75,14 @@ export default function VehicleCard({ vehicle, isAdmin = false, onDeleted }) {
 
   const isMoto = vehicle.vehicle_type === "moto";
 
+  const handleEdit = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditOpen(true);
+  };
+
   return (
+    <>
     <Link
       to={detailUrl}
       className="group relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 hover:border-red-600/60 transition-all duration-300 hover:shadow-2xl hover:shadow-red-900/20 block"
@@ -102,6 +111,15 @@ export default function VehicleCard({ vehicle, isAdmin = false, onDeleted }) {
           )}
         </div>
         <div className="absolute top-3 right-3 flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={handleEdit}
+              aria-label="Editar anúncio"
+              className="flex items-center px-2.5 py-1.5 rounded-full backdrop-blur-md border bg-black/60 border-zinc-600 text-zinc-200 hover:bg-black/80 transition-all"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={handleDelete}
@@ -164,5 +182,14 @@ export default function VehicleCard({ vehicle, isAdmin = false, onDeleted }) {
         </div>
       </div>
     </Link>
+    {isAdmin && (
+      <VehicleFormModal
+        vehicle={vehicle}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={() => onUpdated?.()}
+      />
+    )}
+    </>
   );
 }
